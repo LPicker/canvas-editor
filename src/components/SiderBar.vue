@@ -24,12 +24,6 @@ interface Graphic {
 
 export default defineComponent({
   name: "SiderBar",
-  props: {
-    msg: {
-      type: String,
-      required: true,
-    },
-  },
   data() {
     return {
       basicGraphics: {
