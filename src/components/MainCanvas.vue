@@ -43,14 +43,11 @@ export default defineComponent({
     },
   },
   methods: {
-    drawLine(canvas, overLayer) {
-      const ctx = canvas.getContext("2d");
+    drawLine(ctx, overLayer) {
       const { mouseDown, mouseMove } = this;
       let color = "blue";
       if (overLayer) {
         color = "blue";
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.setLineDash([5, 15]);
       }
       ctx.beginPath();
       ctx.strokeStyle = color;
@@ -58,69 +55,90 @@ export default defineComponent({
       ctx.lineTo(...mouseMove);
       ctx.stroke();
     },
-    drawRect(canvas, overLayer) {
-      const ctx = canvas.getContext("2d");
+    drawRect(ctx, overLayer) {
       const { mouseDown, mouseMove } = this;
       const rectWidth = mouseMove[0] - mouseDown[0];
       const rectHeight = mouseMove[1] - mouseDown[1];
-      if (overLayer) {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
-      }
+
       console.log("drawRect：mouseDown, mouseMove", mouseDown, mouseMove);
       ctx.fillStyle = "red";
       ctx.beginPath();
       ctx.rect(...mouseDown, rectWidth, rectHeight);
-      ctx.fill();
 
+      if (overLayer) {
+        ctx.stroke();
+      } else {
+        ctx.fill();
+      }
       // ctx.fillRect(...mouseDown, width, height);
+    },
+    drawOval(ctx, overLayer) {
+      const { mouseDown, mouseMove } = this;
+      const { pow, sqrt } = Math;
+      const horDis = mouseMove[0] - mouseDown[0];
+      const verticalDis = mouseMove[1] - mouseDown[1];
+      const x = (mouseMove[0] + mouseDown[0]) / 2;
+      const y = (mouseMove[1] + mouseDown[1]) / 2;
+      const radius = sqrt(pow(horDis, 2) + pow(verticalDis, 2)) / 2;
+
+      console.log("handleMouseDown：_this.mouseDown", _this.mouseDown);
+      console.log("handleMouseMove：_this.mouseMove", _this.mouseMove);
+      console.log("drawOval：x, y, radius", x, y, radius);
+      ctx.fillStyle = "red";
+      ctx.beginPath();
+      ctx.arc(x, y, radius, 0, 2 * Math.PI);
+
+      if (overLayer) {
+        ctx.stroke();
+      } else {
+        ctx.fill();
+      }
+    },
+    draw(selected, canvas, overLayer) {
+      const { drawLine, drawRect, drawOval } = this;
+      const ctx = canvas.getContext("2d");
+      // 临时画布先清空画布
+      if (overLayer) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        // 轮廓线为虚线
+        ctx.setLineDash([5, 15]);
+      }
+      switch (selected) {
+        case "line":
+          drawLine(ctx, overLayer);
+          break;
+        case "rect":
+          drawRect(ctx, overLayer);
+          break;
+        case "oval":
+          drawOval(ctx, overLayer);
+          break;
+        default:
+          alert("请选择绘制工具！");
+          break;
+      }
     },
     handleMouseDown(evt) {
       const { clientX, clientY } = evt;
       const { offsetLeft, offsetTop } = _this.$refs.container;
       _this.mouseDown = [clientX - offsetLeft, clientY - offsetTop];
-      // debugger
-      console.log("handleMouseDown：_this.mouseDown", _this.mouseDown);
     },
     handleMouseUp(evt) {
-      const { canvasDom, selected, drawLine, drawRect, drawOval } = _this;
-      switch (selected) {
-        case "line":
-          drawLine(canvasDom);
-          break;
-        case "rect":
-          drawRect(canvasDom);
-          break;
-        case "oval":
-          drawOval(canvasDom);
-          break;
-        default:
-          break;
-      }
+      const { canvasDom, selected } = _this;
+      _this.draw(selected, canvasDom);
       // 绘制完成
       _this.mouseDown = [-1, -1];
     },
     handleMouseMove(evt) {
       const { clientX, clientY } = evt;
-      const { canvasLayer, selected, drawLine, drawRect, drawOval } = _this;
+      const { canvasLayer, selected } = _this;
       const { offsetLeft, offsetTop } = _this.$refs.container;
       if (!_this.mouseStatusDown) {
         return;
       }
       console.log("handleMouseMove：_this.mouseMove", _this.mouseMove);
       _this.mouseMove = [clientX - offsetLeft, clientY - offsetTop];
-      switch (selected) {
-        case "line":
-          drawLine(canvasLayer, true);
-          break;
-        case "rect":
-          drawRect(canvasLayer, true);
-          break;
-        case "oval":
-          drawOval(canvasLayer, true);
-          break;
-        default:
-          break;
-      }
+      _this.draw(selected, canvasLayer, true);
     },
     clearCanvas() {
       const { width, height } = this.canvasDom;
@@ -166,7 +184,7 @@ canvas {
 }
 .canvas-layer.on {
   opacity: 1;
-  background: #ccc;
+  background: rgba(204, 204, 204, 0.6);
 }
 .btn-clear {
   position: fixed;
