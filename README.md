@@ -1,10 +1,14 @@
-# Vue 3 + Typescript + Vite
+# A bitmap editor powered by Vue 3 + Typescript + Vite + Canvas
 
 This template should help get you started developing with Vue 3 and Typescript in Vite.
 
-## Recommended IDE Setup
+## Get started
 
-[VSCode](https://code.visualstudio.com/) + [Vetur](https://marketplace.visualstudio.com/items?itemName=octref.vetur). Make sure to enable `vetur.experimental.templateInterpolationService` in settings!
+`yarn`
+
+## Get started
+
+`yarn`
 
 ### If Using `<script setup>`
 
