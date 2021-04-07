@@ -14,7 +14,14 @@
 <script lang="ts">
 import { ref, defineComponent } from "vue";
 
-let _this = null;
+interface DataInterface {
+  mouseDown: [number, number];
+  mouseMove: [number, number];
+  canvasWid: number | undefined;
+  canvasHei: number | undefined;
+}
+
+let _this: any = null;
 export default defineComponent({
   name: "MainCanvas",
   data() {
@@ -23,30 +30,30 @@ export default defineComponent({
       mouseMove: [-1, -1],
       canvasWid: undefined,
       canvasHei: undefined,
-    };
+    } as DataInterface;
   },
   computed: {
-    selected() {
+    selected(): string {
       return this.$store.state.selectedBasicGraphics;
     },
-    canvasDom() {
+    canvasDom(): any {
       return this.$refs.canvas;
     },
     canvasLayer() {
       return this.$refs.canvasLayer;
     },
-    mouseStatusDown() {
+    mouseStatusDown(): boolean {
       return this.mouseDown[0] !== -1 && this.mouseDown[1] !== -1;
     },
-    ctx() {
+    ctx(): CanvasRenderingContext2D {
       return this.canvasDom.getContext("2d");
     },
   },
   methods: {
-    drawLine(ctx, overLayer) {
+    drawLine(ctx: CanvasRenderingContext2D, isOverLayer: boolean) {
       const { mouseDown, mouseMove } = this;
       let color = "blue";
-      if (overLayer) {
+      if (isOverLayer) {
         color = "blue";
       }
       ctx.beginPath();
@@ -55,7 +62,7 @@ export default defineComponent({
       ctx.lineTo(...mouseMove);
       ctx.stroke();
     },
-    drawRect(ctx, overLayer) {
+    drawRect(ctx: CanvasRenderingContext2D, isOverLayer: boolean) {
       const { mouseDown, mouseMove } = this;
       const rectWidth = mouseMove[0] - mouseDown[0];
       const rectHeight = mouseMove[1] - mouseDown[1];
@@ -65,14 +72,14 @@ export default defineComponent({
       ctx.beginPath();
       ctx.rect(...mouseDown, rectWidth, rectHeight);
 
-      if (overLayer) {
+      if (isOverLayer) {
         ctx.stroke();
       } else {
         ctx.fill();
       }
       // ctx.fillRect(...mouseDown, width, height);
     },
-    drawOval(ctx, overLayer) {
+    drawOval(ctx: CanvasRenderingContext2D, isOverLayer: boolean) {
       const { mouseDown, mouseMove } = this;
       const { pow, sqrt } = Math;
       const horDis = mouseMove[0] - mouseDown[0];
@@ -88,48 +95,51 @@ export default defineComponent({
       ctx.beginPath();
       ctx.arc(x, y, radius, 0, 2 * Math.PI);
 
-      if (overLayer) {
+      if (isOverLayer) {
         ctx.stroke();
       } else {
         ctx.fill();
       }
     },
-    draw(selected, canvas, overLayer) {
+    draw(selected: String, canvas: HTMLCanvasElement, isOverLayer: boolean) {
       const { drawLine, drawRect, drawOval } = this;
       const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        return;
+      }
       // 临时画布先清空画布
-      if (overLayer) {
+      if (isOverLayer) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         // 轮廓线为虚线
         ctx.setLineDash([5, 15]);
       }
       switch (selected) {
         case "line":
-          drawLine(ctx, overLayer);
+          drawLine(ctx, isOverLayer);
           break;
         case "rect":
-          drawRect(ctx, overLayer);
+          drawRect(ctx, isOverLayer);
           break;
         case "oval":
-          drawOval(ctx, overLayer);
+          drawOval(ctx, isOverLayer);
           break;
         default:
           alert("请选择绘制工具！");
           break;
       }
     },
-    handleMouseDown(evt) {
+    handleMouseDown(evt: MouseEvent) {
       const { clientX, clientY } = evt;
       const { offsetLeft, offsetTop } = _this.$refs.container;
       _this.mouseDown = [clientX - offsetLeft, clientY - offsetTop];
     },
-    handleMouseUp(evt) {
+    handleMouseUp(evt: MouseEvent) {
       const { canvasDom, selected } = _this;
       _this.draw(selected, canvasDom);
       // 绘制完成
       _this.mouseDown = [-1, -1];
     },
-    handleMouseMove(evt) {
+    handleMouseMove(evt: MouseEvent) {
       const { clientX, clientY } = evt;
       const { canvasLayer, selected } = _this;
       const { offsetLeft, offsetTop } = _this.$refs.container;
