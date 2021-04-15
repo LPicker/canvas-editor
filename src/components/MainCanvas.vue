@@ -14,14 +14,31 @@
 <script lang="ts">
 import { ref, defineComponent } from "vue";
 
+type Point = [number, number];
+
+type Line = [Point, Point];
+
 interface DataInterface {
-  mouseDown: [number, number];
-  mouseMove: [number, number];
+  mouseDown: Point;
+  mouseMove: Point;
   canvasWid: number | undefined;
   canvasHei: number | undefined;
 }
 
+interface Options {
+  isOverLayer?: boolean;
+  color?: string;
+  startingPoint?: Point;
+  endPoint?: Point;
+}
+
+const defaultOptions: Options = {
+  isOverLayer: false,
+  color: "blue",
+};
+
 let _this: any = null;
+const existingLines: Line[] = [];
 export default defineComponent({
   name: "MainCanvas",
   data() {
@@ -50,36 +67,85 @@ export default defineComponent({
     },
   },
   methods: {
-    drawLine(ctx: CanvasRenderingContext2D, isOverLayer: boolean) {
+    detectParallelLines() {
+      const { mouseDown, mouseMove, canvasDom } = this;
+      const ctx = canvasDom.getContext("2d");
+      for (let i = 0; i < existingLines.length; i++) {
+        const line = existingLines[i];
+        const lineDir = this.getLineDir(line);
+        const curlineDir = this.getLineDir([mouseDown, mouseMove]);
+
+        console.log(
+          "lineDir, curlineDir",
+          lineDir.toFixed(2),
+          curlineDir.toFixed(2)
+        );
+        if (lineDir.toFixed(2) === curlineDir.toFixed(2)) {
+          // 两条线平行了
+          console.log("两条线平行了");
+          this.drawLine(ctx, {
+            startingPoint: line[0],
+            endPoint: line[1],
+            isOverLayer: true,
+            color: "yellow",
+          });
+        } else {
+          this.drawLine(ctx, {
+            startingPoint: line[0],
+            endPoint: line[1],
+            isOverLayer: true,
+          });
+        }
+      }
+    },
+    getLineDir(line: Line) {
+      const [point0, point1] = line;
+      return Math.atan2(point1[1] - point0[1], point1[0] - point0[0]);
+    },
+    handleDrawLine(ctx: CanvasRenderingContext2D, options = defaultOptions) {
       const { mouseDown, mouseMove } = this;
-      let color = "blue";
-      if (isOverLayer) {
+      let color = options.color;
+      if (options.isOverLayer) {
         color = "blue";
+      }
+      this.drawLine(ctx, {
+        startingPoint: mouseDown,
+        endPoint: mouseMove,
+        color,
+      });
+
+      if (options.isOverLayer) {
+        this.detectParallelLines();
+      }
+    },
+    drawLine(ctx: CanvasRenderingContext2D, options = defaultOptions) {
+      const { startingPoint, endPoint, color } = options;
+      if (!ctx) {
+        return;
       }
       ctx.beginPath();
       ctx.strokeStyle = color;
-      ctx.moveTo(...mouseDown);
-      ctx.lineTo(...mouseMove);
+      ctx.moveTo(...startingPoint);
+      ctx.lineTo(...endPoint);
       ctx.stroke();
     },
-    drawRect(ctx: CanvasRenderingContext2D, isOverLayer: boolean) {
+    drawRect(ctx: CanvasRenderingContext2D, options = defaultOptions) {
       const { mouseDown, mouseMove } = this;
       const rectWidth = mouseMove[0] - mouseDown[0];
       const rectHeight = mouseMove[1] - mouseDown[1];
 
-      console.log("drawRect：mouseDown, mouseMove", mouseDown, mouseMove);
       ctx.fillStyle = "red";
       ctx.beginPath();
       ctx.rect(...mouseDown, rectWidth, rectHeight);
 
-      if (isOverLayer) {
+      if (options.isOverLayer) {
         ctx.stroke();
       } else {
         ctx.fill();
       }
       // ctx.fillRect(...mouseDown, width, height);
     },
-    drawOval(ctx: CanvasRenderingContext2D, isOverLayer: boolean) {
+    drawOval(ctx: CanvasRenderingContext2D, options = defaultOptions) {
       const { mouseDown, mouseMove } = this;
       const { pow, sqrt } = Math;
       const horDis = mouseMove[0] - mouseDown[0];
@@ -88,21 +154,23 @@ export default defineComponent({
       const y = (mouseMove[1] + mouseDown[1]) / 2;
       const radius = sqrt(pow(horDis, 2) + pow(verticalDis, 2)) / 2;
 
-      console.log("handleMouseDown：_this.mouseDown", _this.mouseDown);
-      console.log("handleMouseMove：_this.mouseMove", _this.mouseMove);
-      console.log("drawOval：x, y, radius", x, y, radius);
       ctx.fillStyle = "red";
       ctx.beginPath();
       ctx.arc(x, y, radius, 0, 2 * Math.PI);
 
-      if (isOverLayer) {
+      if (options.isOverLayer) {
         ctx.stroke();
       } else {
         ctx.fill();
       }
     },
-    draw(selected: String, canvas: HTMLCanvasElement, isOverLayer: boolean) {
-      const { drawLine, drawRect, drawOval } = this;
+    draw(
+      selected: String,
+      canvas: HTMLCanvasElement,
+      options = defaultOptions
+    ) {
+      const { handleDrawLine, drawRect, drawOval } = this;
+      const { isOverLayer } = options;
       const ctx = canvas.getContext("2d");
       if (!ctx) {
         return;
@@ -115,13 +183,13 @@ export default defineComponent({
       }
       switch (selected) {
         case "line":
-          drawLine(ctx, isOverLayer);
+          handleDrawLine(ctx, options);
           break;
         case "rect":
-          drawRect(ctx, isOverLayer);
+          drawRect(ctx, options);
           break;
         case "oval":
-          drawOval(ctx, isOverLayer);
+          drawOval(ctx, options);
           break;
         default:
           alert("请选择绘制工具！");
@@ -134,8 +202,9 @@ export default defineComponent({
       _this.mouseDown = [clientX - offsetLeft, clientY - offsetTop];
     },
     handleMouseUp(evt: MouseEvent) {
-      const { canvasDom, selected } = _this;
+      const { canvasDom, selected, mouseDown, mouseMove } = _this;
       _this.draw(selected, canvasDom);
+      existingLines.push([mouseDown, mouseMove]);
       // 绘制完成
       _this.mouseDown = [-1, -1];
     },
@@ -146,9 +215,12 @@ export default defineComponent({
       if (!_this.mouseStatusDown) {
         return;
       }
-      console.log("handleMouseMove：_this.mouseMove", _this.mouseMove);
+      // console.log("handleMouseMove：_this.mouseMove", _this.mouseMove);
       _this.mouseMove = [clientX - offsetLeft, clientY - offsetTop];
-      _this.draw(selected, canvasLayer, true);
+      _this.draw(selected, canvasLayer, {
+        ...defaultOptions,
+        isOverLayer: true,
+      });
     },
     clearCanvas() {
       const { width, height } = this.canvasDom;
